@@ -3,12 +3,17 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import shap
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import roc_curve, classification_report, roc_auc_score
+from sklearn.metrics import (
+    roc_curve,
+    classification_report,
+    roc_auc_score,
+    confusion_matrix,
+    precision_recall_curve
+)
 from imblearn.over_sampling import SMOTE
 
 # ==============================
@@ -53,23 +58,10 @@ def train_model(df):
 model, scaler, X_test, y_test, X, y = train_model(df)
 
 # ==============================
-# SHAP EXPLAINER (NO CACHE BUG)
-# ==============================
-def get_explainer(model):
-    return shap.TreeExplainer(model)
-
-explainer = get_explainer(model)
-
-# ==============================
-# SESSION STATE
-# ==============================
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-# ==============================
 # TITLE
 # ==============================
 st.title("💳 Fraud Detection System")
+st.write("Real-time fraud detection using Machine Learning")
 
 # ==============================
 # THRESHOLD
@@ -88,7 +80,7 @@ col2.metric("Fraud Recall", f"{classification_report(y, y_pred, output_dict=True
 col3.metric("Accuracy", f"{np.mean(y_pred == y):.3f}")
 
 # ==============================
-# SIDEBAR INPUT
+# INPUT
 # ==============================
 st.sidebar.header("⚙️ Input Features")
 
@@ -100,20 +92,14 @@ for i in range(1, 29):
 input_data["Amount"] = st.sidebar.number_input("Amount", 0.0)
 input_data["Time"] = st.sidebar.number_input("Time", 0.0)
 
-# ==============================
-# CREATE INPUT DF
-# ==============================
 input_df = pd.DataFrame([input_data])
 
-# ✅ CORRECT SCALING
+# Scale amount
 input_df["Amount"] = scaler.transform(input_df[["Amount"]])
 
-# Match training columns
+# Match columns
 input_df = input_df[X.columns]
 
-# ==============================
-# DISPLAY INPUT
-# ==============================
 st.subheader("📥 Input Data")
 st.dataframe(input_df)
 
@@ -127,59 +113,13 @@ if st.sidebar.button("🚀 Predict"):
     st.subheader("🔍 Prediction Result")
 
     if prob > 0.7:
-        result = "HIGH RISK"
         st.error(f"🚨 HIGH RISK ({prob:.2f})")
     elif prob > 0.4:
-        result = "MEDIUM RISK"
         st.warning(f"⚠️ MEDIUM RISK ({prob:.2f})")
     else:
-        result = "LOW RISK"
         st.success(f"✅ LOW RISK ({prob:.2f})")
 
     st.progress(float(prob))
-
-    st.session_state.history.append({
-        "Probability": prob,
-        "Result": result
-    })
-
-    # ==============================
-    # SHAP EXPLANATION (FIXED)
-    # ==============================
-    st.subheader("🧠 Why this prediction?")
-
-    shap_values = explainer.shap_values(input_df)
-
-    # ✅ Handle both SHAP formats
-    if isinstance(shap_values, list):
-        values = shap_values[1][0]
-        base = explainer.expected_value[1]
-    else:
-        values = shap_values[0]
-        base = explainer.expected_value
-
-    fig, ax = plt.subplots()
-
-    shap.plots.waterfall(
-        shap.Explanation(
-            values=values,
-            base_values=base,
-            data=input_df.iloc[0]
-        ),
-        show=False
-    )
-
-    st.pyplot(fig)
-
-# ==============================
-# HISTORY
-# ==============================
-st.subheader("📜 Prediction History")
-
-if st.session_state.history:
-    st.dataframe(pd.DataFrame(st.session_state.history))
-else:
-    st.write("No predictions yet.")
 
 # ==============================
 # ROC CURVE
@@ -188,16 +128,63 @@ st.subheader("📈 ROC Curve")
 
 fpr, tpr, _ = roc_curve(y, y_prob)
 
-fig, ax = plt.subplots()
-ax.plot(fpr, tpr)
-ax.plot([0, 1], [0, 1], '--')
-st.pyplot(fig)
+fig1, ax1 = plt.subplots()
+ax1.plot(fpr, tpr)
+ax1.plot([0, 1], [0, 1], '--')
+st.pyplot(fig1)
+
+# ==============================
+# CONFUSION MATRIX
+# ==============================
+st.subheader("📊 Confusion Matrix")
+
+cm = confusion_matrix(y, y_pred)
+
+fig2, ax2 = plt.subplots()
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax2)
+ax2.set_xlabel("Predicted")
+ax2.set_ylabel("Actual")
+
+st.pyplot(fig2)
+
+# ==============================
+# PRECISION-RECALL CURVE
+# ==============================
+st.subheader("📉 Precision-Recall Curve")
+
+precision, recall, _ = precision_recall_curve(y, y_prob)
+
+fig3, ax3 = plt.subplots()
+ax3.plot(recall, precision)
+ax3.set_xlabel("Recall")
+ax3.set_ylabel("Precision")
+
+st.pyplot(fig3)
+
+# ==============================
+# FEATURE IMPORTANCE
+# ==============================
+st.subheader("📦 Feature Importance")
+
+importances = model.feature_importances_
+
+feat_imp = pd.DataFrame({
+    "Feature": X.columns,
+    "Importance": importances
+}).sort_values(by="Importance", ascending=False).head(10)
+
+fig4, ax4 = plt.subplots()
+ax4.barh(feat_imp["Feature"], feat_imp["Importance"])
+ax4.invert_yaxis()
+
+st.pyplot(fig4)
 
 # ==============================
 # HEATMAP
 # ==============================
-st.subheader("🔥 Correlation Heatmap")
+st.subheader("🔥 Feature Correlation Heatmap")
 
-fig2, ax2 = plt.subplots(figsize=(10, 6))
-sns.heatmap(df.corr(), cmap="coolwarm", ax=ax2)
-st.pyplot(fig2)
+fig5, ax5 = plt.subplots(figsize=(10, 6))
+sns.heatmap(df.corr(), cmap="coolwarm", ax=ax5)
+
+st.pyplot(fig5)
