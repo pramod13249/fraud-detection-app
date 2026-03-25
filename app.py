@@ -20,7 +20,7 @@ st.set_page_config(page_title="Fraud Detection", layout="wide")
 # ==============================
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/creditcard.csv")
+    df = pd.read_csv("creditcard.csv")
     return df.sample(20000)
 
 df = load_data()
