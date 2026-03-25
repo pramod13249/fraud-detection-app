@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import shap   # ✅ STEP 2: ADD HERE
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -52,6 +53,15 @@ def train_model(df):
 model, scaler, X_test, y_test, X, y = train_model(df)
 
 # ==============================
+# ✅ STEP 3: SHAP EXPLAINER
+# ==============================
+@st.cache_resource
+def get_explainer(model):
+    return shap.TreeExplainer(model)
+
+explainer = get_explainer(model)
+
+# ==============================
 # SESSION STATE
 # ==============================
 if "history" not in st.session_state:
@@ -88,10 +98,7 @@ input_data = {}
 for i in range(1, 29):
     input_data[f"V{i}"] = st.sidebar.slider(f"V{i}", -10.0, 10.0, 0.0)
 
-# Amount input (RAW value first)
 input_data["Amount"] = st.sidebar.number_input("Amount", 0.0)
-
-# Time
 input_data["Time"] = st.sidebar.number_input("Time", 0.0)
 
 # ==============================
@@ -99,10 +106,9 @@ input_data["Time"] = st.sidebar.number_input("Time", 0.0)
 # ==============================
 input_df = pd.DataFrame([input_data])
 
-# ✅ CORRECT PLACE TO ADD SCALING (IMPORTANT)
+# ✅ FIXED SCALING (NO WARNINGS)
 input_df["Amount"] = scaler.transform(input_df[["Amount"]])
 
-# Ensure same column order
 input_df = input_df[X.columns]
 
 # ==============================
@@ -136,6 +142,25 @@ if st.sidebar.button("🚀 Predict"):
         "Probability": prob,
         "Result": result
     })
+
+    # ==============================
+    # ✅ STEP 4: SHAP EXPLANATION
+    # ==============================
+    st.subheader("🧠 Why this prediction?")
+
+    shap_values = explainer.shap_values(input_df)
+
+    fig, ax = plt.subplots()
+    shap.plots.waterfall(
+        shap.Explanation(
+            values=shap_values[1][0],
+            base_values=explainer.expected_value[1],
+            data=input_df.iloc[0]
+        ),
+        show=False
+    )
+
+    st.pyplot(fig)
 
 # ==============================
 # HISTORY
