@@ -1,7 +1,8 @@
 streamlit
 pandas
 numpy
+scikit-learn
 matplotlib
 seaborn
-scikit-learn
 imbalanced-learn
+shap
