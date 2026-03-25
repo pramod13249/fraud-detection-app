@@ -7,7 +7,7 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import roc_curve, classification_report, confusion_matrix, roc_auc_score
+from sklearn.metrics import roc_curve, classification_report, roc_auc_score
 from imblearn.over_sampling import SMOTE
 
 # ==============================
@@ -88,18 +88,25 @@ input_data = {}
 for i in range(1, 29):
     input_data[f"V{i}"] = st.sidebar.slider(f"V{i}", -10.0, 10.0, 0.0)
 
-# ✅ FIXED PART (NO WARNING)
-amount = st.sidebar.number_input("Amount", 0.0)
-amount_df = pd.DataFrame({"Amount": [amount]})
-input_data["Amount"] = scaler.transform(amount_df)[0][0]
+# Amount input (RAW value first)
+input_data["Amount"] = st.sidebar.number_input("Amount", 0.0)
 
+# Time
 input_data["Time"] = st.sidebar.number_input("Time", 0.0)
 
+# ==============================
+# CREATE INPUT DF
+# ==============================
 input_df = pd.DataFrame([input_data])
+
+# ✅ CORRECT PLACE TO ADD SCALING (IMPORTANT)
+input_df["Amount"] = scaler.transform(input_df[["Amount"]])
+
+# Ensure same column order
 input_df = input_df[X.columns]
 
 # ==============================
-# INPUT DISPLAY
+# DISPLAY INPUT
 # ==============================
 st.subheader("📥 Input Data")
 st.dataframe(input_df)
