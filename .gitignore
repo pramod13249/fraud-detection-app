@@ -1,4 +1,16 @@
+# Virtual env
 venv/
+
+# Cache
 __pycache__/
+*.pyc
+
+# Ignore model files (important)
 *.pkl
-data/
+
+# System files
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
