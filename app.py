@@ -55,7 +55,6 @@ model, scaler, X_test, y_test, X, y = train_model(df)
 # ==============================
 # ✅ STEP 3: SHAP EXPLAINER
 # ==============================
-@st.cache_resource
 def get_explainer(model):
     return shap.TreeExplainer(model)
 
